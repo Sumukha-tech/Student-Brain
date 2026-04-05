@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Document ID: {userId}
+    // Fields: uid, email, displayName, photoURL, syllabus, createdAt
+    //
+    // Collection: users/{userId}/notes
+    // Fields: userId, title, content, summary, examQuestions, type, createdAt
+    //
+    // Collection: users/{userId}/studyPlans
+    // Fields: userId, date, schedule, motivation, createdAt
+    //
+    // Collection: users/{userId}/performance
+    // Fields: userId, analysis, readiness, createdAt
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.email.size() < 256;
+    }
+
+    function isValidNote(data) {
+      return data.keys().hasAll(['userId', 'title', 'content']) &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() < 200 &&
+             data.content is string && data.content.size() < 100000;
+    }
+
+    function isValidStudyPlan(data) {
+      return data.keys().hasAll(['userId', 'date']) &&
+             data.userId == request.auth.uid &&
+             data.date is string;
+    }
+
+    function isValidPerformance(data) {
+      return data.keys().hasAll(['userId', 'analysis']) &&
+             data.userId == request.auth.uid &&
+             data.analysis is string;
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+      
+      // Subcollections
+      match /notes/{noteId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidNote(request.resource.data);
+        allow update: if isOwner(userId) && isValidNote(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+      
+      match /studyPlans/{planId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidStudyPlan(request.resource.data);
+        allow update: if isOwner(userId) && isValidStudyPlan(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+      
+      match /performance/{perfId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidPerformance(request.resource.data);
+        allow update: if isOwner(userId) && isValidPerformance(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Student Brain (B.Tech Edition)",
+  "description": "An AI-powered Study Operating System tailored for B.Tech Engineering students. Features lecture conversion, smart notes, performance analysis, and personalized study planning for technical subjects.",
+  "requestFramePermissions": ["microphone", "camera"]
+}

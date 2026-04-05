@@ -1,0 +1,79 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user settings and syllabus progress.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "syllabus": {
+          "type": "object",
+          "description": "Map of subjects to progress percentage"
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Note": {
+      "title": "Study Note",
+      "description": "Structured notes generated from audio or text.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "summary": { "type": "string" },
+        "examQuestions": { "type": "array", "items": { "type": "string" } },
+        "type": { "type": "string", "enum": ["lecture", "reading", "summary"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "content"]
+    },
+    "StudyPlan": {
+      "title": "Study Plan",
+      "description": "Daily hour-by-hour study schedule.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "date": { "type": "string" },
+        "schedule": { "type": "array" },
+        "motivation": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "date"]
+    },
+    "Performance": {
+      "title": "Performance Analysis",
+      "description": "Insights into student's academic performance.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "analysis": { "type": "string" },
+        "readiness": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "analysis"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile and settings"
+    },
+    "/users/{userId}/notes/{noteId}": {
+      "schema": "Note",
+      "description": "User's study notes"
+    },
+    "/users/{userId}/studyPlans/{planId}": {
+      "schema": "StudyPlan",
+      "description": "User's daily study plans"
+    },
+    "/users/{userId}/performance/{perfId}": {
+      "schema": "Performance",
+      "description": "User's performance analysis"
+    }
+  }
+}
