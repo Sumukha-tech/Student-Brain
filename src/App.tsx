@@ -8,7 +8,8 @@ import {
   BookOpen, Calendar, LayoutDashboard, LogOut, Plus, Search, 
   Sparkles, TrendingUp, User as UserIcon, Mic, FileText, 
   BrainCircuit, CheckCircle2, AlertCircle, Loader2, Send,
-  Video, Image as ImageIcon, Trash2, ChevronRight, GraduationCap
+  Video, Image as ImageIcon, Trash2, ChevronRight, GraduationCap,
+  MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
@@ -69,7 +70,7 @@ export default function App() {
 function MainApp() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'notes' | 'plan' | 'tools'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'notes' | 'plan' | 'tools' | 'chat'>('dashboard');
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState<StudyNote[]>([]);
   const [plans, setPlans] = useState<StudyPlan[]>([]);
@@ -195,6 +196,12 @@ function MainApp() {
             onClick={() => setActiveTab('plan')}
             icon={<Calendar size={20} />}
             label="Study Plan"
+          />
+          <NavItem 
+            active={activeTab === 'chat'} 
+            onClick={() => setActiveTab('chat')}
+            icon={<MessageSquare size={20} />}
+            label="AI Tutor Chat"
           />
           <NavItem 
             active={activeTab === 'tools'} 
@@ -329,6 +336,10 @@ function MainApp() {
 
             {activeTab === 'tools' && (
               <AIToolsView userId={user.uid} profile={profile} notes={notes} />
+            )}
+
+            {activeTab === 'chat' && (
+              <ChatView />
             )}
           </AnimatePresence>
         </div>
@@ -755,6 +766,127 @@ Output in JSON format:
           <p className="text-sm">No study plan generated for today yet.</p>
         </div>
       )}
+    </div>
+  );
+}
+
+function ChatView() {
+  const [messages, setMessages] = useState<{ role: 'user' | 'model'; text: string }[]>([
+    { role: 'model', text: "Hello! I'm your AI Engineering Tutor. How can I help you with your B.Tech studies today?" }
+  ]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const chatRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    chatRef.current = ai.chats.create({
+      model: "gemini-3-flash-preview",
+      config: {
+        systemInstruction: "You are an expert B.Tech Engineering Tutor. Help students with technical concepts, numerical problems, and exam preparation. Be concise, accurate, and encouraging.",
+      },
+    });
+  }, []);
+
+  const handleSend = async () => {
+    if (!input.trim() || isTyping) return;
+
+    const userMessage = input.trim();
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    setIsTyping(true);
+
+    try {
+      const response = await chatRef.current.sendMessage({ message: userMessage });
+      setMessages(prev => [...prev, { role: 'model', text: response.text }]);
+    } catch (error) {
+      console.error("Chat error:", error);
+      setMessages(prev => [...prev, { role: 'model', text: "Sorry, I encountered an error. Please try again." }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-12rem)] bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+          <BrainCircuit className="text-white" size={18} />
+        </div>
+        <div>
+          <h4 className="font-bold text-slate-900 text-sm">AI Engineering Tutor</h4>
+          <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">Online</p>
+        </div>
+      </div>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
+        {messages.map((msg, i) => (
+          <motion.div 
+            key={i}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={cn(
+              "flex gap-3 max-w-[85%]",
+              msg.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto"
+            )}
+          >
+            <div className={cn(
+              "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+              msg.role === 'user' ? "bg-slate-200" : "bg-indigo-600"
+            )}>
+              {msg.role === 'user' ? <UserIcon size={16} className="text-slate-600" /> : <BrainCircuit size={16} className="text-white" />}
+            </div>
+            <div className={cn(
+              "p-4 rounded-2xl text-sm leading-relaxed",
+              msg.role === 'user' 
+                ? "bg-slate-100 text-slate-800 rounded-tr-none" 
+                : "bg-indigo-50 text-indigo-900 rounded-tl-none border border-indigo-100"
+            )}>
+              <div className="prose prose-sm prose-indigo max-w-none">
+                <Markdown>
+                  {msg.text}
+                </Markdown>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+        {isTyping && (
+          <div className="flex gap-3 mr-auto">
+            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0">
+              <BrainCircuit size={16} className="text-white" />
+            </div>
+            <div className="bg-indigo-50 p-4 rounded-2xl rounded-tl-none border border-indigo-100">
+              <Loader2 size={16} className="text-indigo-600 animate-spin" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+        <div className="flex gap-2">
+          <input 
+            type="text" 
+            placeholder="Ask a technical question..." 
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSend()}
+            className="flex-1 p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-indigo-300 text-sm shadow-sm"
+          />
+          <button 
+            onClick={handleSend}
+            disabled={isTyping || !input.trim()}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl transition-all disabled:opacity-50 shadow-md shadow-indigo-100"
+          >
+            <Send size={20} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
